@@ -1,8 +1,8 @@
 {
-  "name": "youtube-ai",
-  "displayName": "Youtube AI",
+  "name": "breakdown",
+  "displayName": "Breakdown",
   "version": "0.0.1",
-  "description": "A chrome extension that lets you chat with youtube videos",
+  "description": "Breakdown provides real-time explanations and chat for Youtube videos.",
   "author": "Paolo Nessim",
   "scripts": {
     "dev": "plasmo dev",

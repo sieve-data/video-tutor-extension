@@ -2,7 +2,7 @@ import { useExtension } from "@/contexts/extension-context"
 import { useTranscript } from "@/contexts/transcript-context"
 import React from "react"
 
-import TranscriptList from "./transcript-list"
+import TranscriptViewer from "./transcript-viewer"
 import TranscriptSkeleton from "./transcript-skeleton"
 
 interface TranscriptContentProps {
@@ -30,7 +30,7 @@ const TranscriptContent = React.forwardRef<HTMLDivElement, TranscriptContentProp
       )
     }
 
-    if (!extensionData.transcript || transcriptJson.length === 0) {
+    if (!extensionData.transcript) {
       return (
         <div className="flex justify-center items-center w-full p-3 bg-white dark:bg-[#0f0f0f]">
           <div className="text-center space-y-2">
@@ -43,9 +43,9 @@ const TranscriptContent = React.forwardRef<HTMLDivElement, TranscriptContentProp
 
     return (
       <div
-        ref={ref} // Attach the ref here
-        className="flex justify-center items-center w-full  p-3 bg-white dark:bg-[#0f0f0f]">
-        <TranscriptList transcript={transcriptJson} searchInput={transcriptSearch} />
+        ref={ref}
+        className="w-full h-full bg-white dark:bg-[#0f0f0f]">
+        <TranscriptViewer transcript={extensionData.transcript} />
       </div>
     )
   }

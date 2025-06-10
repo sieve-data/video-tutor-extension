@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { TooltipWrapper } from "@/components/ui/tooltip-wrapper"
+import { IconSieve } from "@/components/ui/icons"
 import { useExtension } from "@/contexts/extension-context"
 import { useTranscript } from "@/contexts/transcript-context"
 import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard"
@@ -42,6 +43,12 @@ export default function TranscriptActions({ jumpCurrentTime }: TranscriptActions
           }}
           disabled={extensionLoading || transcriptJson.length === 0}
         />
+        {extensionData?.transcriptSource === 'sieve' && (
+          <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
+            <IconSieve className="h-3.5 w-3.5 opacity-60" />
+            <span className="text-xs opacity-60">Powered by Sieve</span>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-row space-x-2">

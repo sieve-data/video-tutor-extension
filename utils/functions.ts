@@ -1,61 +1,72 @@
-// Regex to parse the player response from the page (when transcript is not available on the window)
-const YT_INITIAL_PLAYER_RESPONSE_RE =
-  /ytInitialPlayerResponse\s*=\s*({.+?})\s*;\s*(?:var\s+(?:meta|head)|<\/script|\n)/
-
-/**
- * Comparison function used to sort tracks by priority
- */
-function compareTracks(track1, track2) {
-  const langCode1 = track1.languageCode
-  const langCode2 = track2.languageCode
-
-  if (langCode1 === "en" && langCode2 !== "en") {
-    return -1 // English comes first
-  } else if (langCode1 !== "en" && langCode2 === "en") {
-    return 1 // English comes first
-  } else if (track1.kind !== "asr" && track2.kind === "asr") {
-    return -1 // Non-ASR comes first
-  } else if (track1.kind === "asr" && track2.kind !== "asr") {
-    return 1 // Non-ASR comes first
-  }
-
-  return 0 // Preserve order if both have same priority
-}
+import { fetchTranscriptFromSieve } from "./sieve-api"
+import { storage } from "@/lib/atoms/storage"
 
 export async function getVideoData(id: string) {
-  // @ts-ignore
-  let player = window.ytInitialPlayerResponse
-  if (!player || id !== player.videoDetails.videoId) {
-    const pageData = await fetch(`https://www.youtube.com/watch?v=${id}`)
-    const body = await pageData.text()
-    const playerResponseMatch = body.match(YT_INITIAL_PLAYER_RESPONSE_RE)
-    if (!playerResponseMatch) {
-      console.warn("Unable to parse playerResponse")
-      return
+  const videoUrl = `https://www.youtube.com/watch?v=${id}`
+  
+  // Pause the video while fetching
+  const video = document.querySelector('video')
+  const wasPlaying = video && !video.paused
+  if (video && wasPlaying) {
+    video.pause()
+  }
+
+  try {
+    // Get API key from secure storage
+    const sieveApiKey = await storage.get("sieveAPIKey")
+    
+    if (!sieveApiKey) {
+      throw new Error("Sieve API key not configured. Please set your API key in the extension settings.")
     }
-    player = JSON.parse(playerResponseMatch[1])
-  }
-
-  const metadata = {
-    title: player.videoDetails.title,
-    duration: player.videoDetails.lengthSeconds,
-    author: player.videoDetails.author,
-    views: player.videoDetails.viewCount
-  }
-
-  // console.log("player", metadata)
-  // return { metadata, transcript: null }
-
-  if (player.captions && player.captions.playerCaptionsTracklistRenderer) {
-    const tracks = player.captions.playerCaptionsTracklistRenderer.captionTracks
-    if (tracks && tracks.length > 0) {
-      tracks.sort(compareTracks)
-      const transcriptResponse = await fetch(tracks[0].baseUrl + "&fmt=json3")
-      const transcript = await transcriptResponse.json()
-      return { metadata, transcript }
+    
+    console.log("Fetching transcript from Sieve...")
+    const sieveData = await fetchTranscriptFromSieve(videoUrl, sieveApiKey)
+    
+    // Extract metadata
+    const metadata = {
+      title: sieveData.metadata?.title || "Unknown Title",
+      duration: sieveData.metadata?.duration || "0",
+      author: sieveData.metadata?.channel_id || "Unknown Author",
+      views: sieveData.metadata?.view_count || "0"
+    }
+    
+    // Get the transcript - prefer English
+    const subtitles = sieveData.subtitles || {}
+    const transcript = subtitles.en || subtitles.eng || Object.values(subtitles)[0]
+    
+    if (!transcript) {
+      throw new Error("No subtitles found for this video")
+    }
+    
+    console.log("Successfully fetched transcript from Sieve")
+    
+    // Resume video if it was playing
+    if (video && wasPlaying) {
+      video.play()
+    }
+    
+    return { metadata, transcript, transcriptSource: 'sieve' }
+    
+  } catch (error) {
+    console.error("Failed to fetch from Sieve:", error)
+    
+    // Resume video on error
+    if (video && wasPlaying) {
+      video.play()
+    }
+    
+    // Return empty data with error message
+    return {
+      metadata: {
+        title: "Error loading transcript",
+        duration: "0",
+        author: error.message || "Failed to fetch from Sieve",
+        views: "0"
+      },
+      transcript: null,
+      transcriptSource: 'error'
     }
   }
-  return { metadata, transcript: null }
 }
 
 export function cleanJsonTranscript(transcript) {

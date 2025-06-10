@@ -16,6 +16,41 @@ export function IconSparkles({ className, ...props }: React.ComponentProps<"svg"
   )
 }
 
+export function IconSieve({ className, ...props }: React.ComponentProps<"svg">) {
+  return (
+    <svg
+      viewBox="0 0 100 100"
+      xmlns="http://www.w3.org/2000/svg"
+      className={cn("size-4", className)}
+      {...props}>
+      <title>Sieve icon</title>
+      {/* Outer circle with border */}
+      <circle cx="50" cy="50" r="48" fill="none" stroke="currentColor" strokeWidth="4"/>
+      
+      {/* Inner circle - clip path for the bottom half lines */}
+      <defs>
+        <clipPath id="innerCircleClip">
+          <circle cx="50" cy="50" r="38"/>
+        </clipPath>
+      </defs>
+      
+      {/* Top half filled */}
+      <path d="M 12 50 A 38 38 0 0 1 88 50 Z" fill="currentColor" clipPath="url(#innerCircleClip)"/>
+      
+      {/* Bottom half with alternating lines (3 solid, 3 clear) */}
+      <g clipPath="url(#innerCircleClip)">
+        <rect x="12" y="50" width="76" height="8" fill="currentColor"/>
+        {/* Clear space */}
+        <rect x="12" y="58" width="76" height="5" fill="transparent"/>
+        <rect x="12" y="63" width="76" height="8" fill="currentColor"/>
+        {/* Clear space */}
+        <rect x="12" y="71" width="76" height="5" fill="transparent"/>
+        <rect x="12" y="76" width="76" height="8" fill="currentColor"/>
+      </g>
+    </svg>
+  )
+}
+
 export function IconOpenAI({ className, ...props }: React.ComponentProps<"svg">) {
   return (
     <svg

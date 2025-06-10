@@ -19,7 +19,7 @@ const initialState: ExtensionState = {
   extensionIsOpen: false,
   extensionTheme: null,
   extensionLoading: false,
-  extensionPanel: "Summary",
+  extensionPanel: "Learn",
   extensionVideoId: "",
   extensionData: null
 }

@@ -1,9 +1,10 @@
 import APIKeyModal from "@/components/api-key-modal"
+import SettingsModal from "@/components/settings-modal"
 import ExtensionActions from "@/components/extension-actions"
 import ExtensionPanels from "@/components/extension-panels"
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible"
 import { useExtension } from "@/contexts/extension-context"
-import { dismissedAPIKeySetupAtom, openAIKeyAtom, resetDismissedSetupAtom, sieveAPIKeyAtom } from "@/lib/atoms/openai"
+import { dismissedAPIKeySetupAtom, openAIKeyAtom, sieveAPIKeyAtom } from "@/lib/atoms/openai"
 import { useLocalStorage } from "@/lib/hooks/use-local-storage"
 import { getVideoData } from "@/utils/functions"
 import { useAtom, useAtomValue } from "jotai"
@@ -28,12 +29,9 @@ export default function Extension() {
   const sieveAPIKey = useAtomValue(sieveAPIKeyAtom)
   const [dismissedSetup, setDismissedSetup] = useAtom(dismissedAPIKeySetupAtom)
   const [showAPIKeyModal, setShowAPIKeyModal] = React.useState(false)
-  const resetDismissed = useAtomValue(resetDismissedSetupAtom)
+  const [showSettingsModal, setShowSettingsModal] = React.useState(false)
 
-  // Reset dismissed state on component mount (page reload)
-  React.useEffect(() => {
-    setDismissedSetup(false)
-  }, [])
+  // Don't reset dismissed state on component mount - keep user's preference
 
   React.useEffect(() => {
     console.log("Use Effect That Fetches Video Data Called")
@@ -43,7 +41,7 @@ export default function Extension() {
 
     const fetchVideoData = async () => {
       const id = getVideoId()
-      if (id && id !== extensionVideoId) {
+      if (id && id !== extensionVideoId && openAIKey && sieveAPIKey) {
         setExtensionVideoId(id)
         setExtensionLoading(true)
         const data = await getVideoData(id)
@@ -59,7 +57,7 @@ export default function Extension() {
     const intervalId = setInterval(fetchVideoData, 2000)
 
     return () => clearInterval(intervalId)
-  }, [extensionVideoId])
+  }, [extensionVideoId, openAIKey, sieveAPIKey])
 
   React.useEffect(() => {
     console.log("Use Effect That Fetches Theme Called")
@@ -75,19 +73,23 @@ export default function Extension() {
     }
   }, [])
 
-  // Check if API keys are missing and user hasn't dismissed
+  // Only show API key modal once per session if keys are missing
   React.useEffect(() => {
+    // Only check on initial mount, not on every render
+    const hasShownThisSession = sessionStorage.getItem('hasShownAPIKeyModal')
+    
     if (!openAIKey || !sieveAPIKey) {
-      if (!dismissedSetup) {
+      if (!dismissedSetup && !hasShownThisSession) {
         // Pause YouTube video
         const video = document.querySelector('video')
         if (video && !video.paused) {
           video.pause()
         }
         setShowAPIKeyModal(true)
+        sessionStorage.setItem('hasShownAPIKeyModal', 'true')
       }
     }
-  }, [openAIKey, sieveAPIKey, dismissedSetup])
+  }, []) // Empty dependency array - only run once on mount
 
   const handleAPIKeyModalLater = () => {
     setDismissedSetup(true)
@@ -112,6 +114,10 @@ export default function Extension() {
     }
   }
 
+  const handleOpenSettings = () => {
+    setShowSettingsModal(true)
+  }
+
   // Don't render extension if user dismissed setup
   if (dismissedSetup && (!openAIKey || !sieveAPIKey)) {
     return null
@@ -127,6 +133,11 @@ export default function Extension() {
         onLater={handleAPIKeyModalLater}
         theme={extensionTheme}
       />
+      <SettingsModal
+        open={showSettingsModal}
+        onOpenChange={setShowSettingsModal}
+        theme={extensionTheme}
+      />
       <main
         ref={setExtensionContainer}
         className={`antialiased w-full mb-3 z-10 ${extensionTheme}`}>
@@ -135,7 +146,7 @@ export default function Extension() {
             open={extensionIsOpen}
             onOpenChange={setExtensionIsOpen}
             className="space-y-3">
-            <ExtensionActions />
+            <ExtensionActions onOpenSettings={handleOpenSettings} />
             <CollapsibleContent className="w-full dark:bg-[#0f0f0f] dark:text-white h-fit max-h-[500px] border border-zinc-200 dark:border-zinc-800 rounded-md overflow-auto no-scrollbar">
               <ExtensionPanels />
             </CollapsibleContent>

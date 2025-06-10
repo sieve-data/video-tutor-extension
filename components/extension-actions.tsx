@@ -4,14 +4,16 @@ import { TooltipWrapper } from "@/components/ui/tooltip-wrapper"
 import { useCopyToClipboard } from "@/lib/hooks/use-copy-to-clipboard"
 
 // prettier-ignore
-import { ActivityLogIcon, CaretSortIcon, ChatBubbleIcon, CheckIcon, Link2Icon, Pencil2Icon } from "@radix-ui/react-icons";
+import { ActivityLogIcon, CaretSortIcon, ChatBubbleIcon, CheckIcon, Link2Icon, Pencil2Icon, GearIcon } from "@radix-ui/react-icons";
 
 import { IconSieve } from "@/components/ui/icons"
 import { useExtension } from "@/contexts/extension-context"
 
-interface ExtensionActionsProps {}
+interface ExtensionActionsProps {
+  onOpenSettings?: () => void
+}
 
-export default function ExtensionActions({}: ExtensionActionsProps) {
+export default function ExtensionActions({ onOpenSettings }: ExtensionActionsProps) {
   const { extensionIsOpen, extensionPanel, setExtensionIsOpen, setExtensionPanel } =
     useExtension()
 
@@ -70,6 +72,12 @@ export default function ExtensionActions({}: ExtensionActionsProps) {
         </div>
 
         <div className="flex items-center space-x-2">
+          <TooltipWrapper text="Settings">
+            <Button variant="outline" size="icon" onClick={onOpenSettings}>
+              <GearIcon className="h-4.5 w-4.5 opacity-60" />
+            </Button>
+          </TooltipWrapper>
+
           <TooltipWrapper text="Copy Video URL">
             <Button variant="outline" size="icon" onClick={() => CopyVideoURL()}>
               {isCopied ? (

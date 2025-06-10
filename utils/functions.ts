@@ -1,4 +1,5 @@
 import { fetchTranscriptFromSieve } from "./sieve-api"
+import { fetchYouTubeTranscript } from "./youtube-transcript"
 import { storage } from "@/lib/atoms/storage"
 
 export async function getVideoData(id: string) {
@@ -35,7 +36,7 @@ export async function getVideoData(id: string) {
     const transcript = subtitles.en || subtitles.eng || Object.values(subtitles)[0]
     
     if (!transcript) {
-      throw new Error("No subtitles found for this video")
+      throw new Error("No captions available for this video. Try a different video with captions enabled.")
     }
     
     console.log("Successfully fetched transcript from Sieve")
@@ -47,24 +48,58 @@ export async function getVideoData(id: string) {
     
     return { metadata, transcript, transcriptSource: 'sieve' }
     
-  } catch (error) {
-    console.error("Failed to fetch from Sieve:", error)
+  } catch (sieveError) {
+    console.error("Failed to fetch from Sieve:", sieveError)
     
-    // Resume video on error
-    if (video && wasPlaying) {
-      video.play()
-    }
-    
-    // Return empty data with error message
-    return {
-      metadata: {
-        title: "Error loading transcript",
-        duration: "0",
-        author: error.message || "Failed to fetch from Sieve",
-        views: "0"
-      },
-      transcript: null,
-      transcriptSource: 'error'
+    // Try YouTube fallback
+    try {
+      console.log("Attempting YouTube transcript fallback...")
+      const transcript = await fetchYouTubeTranscript(id)
+      
+      // Resume video if it was playing
+      if (video && wasPlaying) {
+        video.play()
+      }
+      
+      return {
+        metadata: {
+          title: "Transcript loaded (fallback)",
+          duration: "0",
+          author: "Using YouTube's native captions",
+          views: "0"
+        },
+        transcript: transcript,
+        transcriptSource: 'youtube-fallback'
+      }
+      
+    } catch (fallbackError) {
+      console.error("YouTube fallback also failed:", fallbackError)
+      
+      // Resume video on error
+      if (video && wasPlaying) {
+        video.play()
+      }
+      
+      // Return empty data with user-friendly error message
+      let userMessage = "Unable to load captions"
+      if (sieveError.message.includes("No captions available")) {
+        userMessage = "No captions available"
+      } else if (sieveError.message.includes("timed out")) {
+        userMessage = "Loading timed out - please try again"
+      } else if (sieveError.message.includes("API key")) {
+        userMessage = "API key issue - check settings"
+      }
+      
+      return {
+        metadata: {
+          title: userMessage,
+          duration: "0",
+          author: "This video may not have captions or there was a loading error",
+          views: "0"
+        },
+        transcript: null,
+        transcriptSource: 'error'
+      }
     }
   }
 }

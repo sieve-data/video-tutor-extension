@@ -20,10 +20,12 @@ export default function APIKeyModal({ open, onOpenChange, onLater, theme }: APIK
   const [openAIKeyValue, setOpenAIKeyValue] = React.useState("")
   const [sieveKeyValue, setSieveKeyValue] = React.useState("")
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (openAIKeyValue && sieveKeyValue) {
       setOpenAIKey(openAIKeyValue)
       setSieveAPIKey(sieveKeyValue)
+      // Small delay to ensure storage write completes
+      await new Promise(resolve => setTimeout(resolve, 100))
       onOpenChange(false)
     }
   }

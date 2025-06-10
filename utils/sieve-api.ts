@@ -8,7 +8,7 @@ interface SieveJobResponse {
 }
 
 async function waitForJobCompletion(jobId: string, apiKey: string): Promise<any> {
-  const maxAttempts = 60 // 60 attempts = 1 minute with 1 second intervals
+  const maxAttempts = 120 // 120 attempts = 2 minutes with 1 second intervals
   let attempts = 0
 
   while (attempts < maxAttempts) {
@@ -36,16 +36,17 @@ async function waitForJobCompletion(jobId: string, apiKey: string): Promise<any>
     attempts++
   }
 
-  throw new Error("Job timed out after 1 minute")
+  throw new Error("Job timed out after 2 minutes")
 }
 
-export async function fetchTranscriptFromSieve(videoUrl: string, sieveApiKey: string): Promise<any> {
+export async function fetchTranscriptFromSieve(videoUrl: string, sieveApiKey: string, retryCount = 0): Promise<any> {
   if (!sieveApiKey) {
     throw new Error("Sieve API key not configured")
   }
 
-  // Push job to Sieve
-  const pushResponse = await fetch(SIEVE_API_URL, {
+  try {
+    // Push job to Sieve
+    const pushResponse = await fetch(SIEVE_API_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -104,4 +105,13 @@ export async function fetchTranscriptFromSieve(videoUrl: string, sieveApiKey: st
   }
 
   return processedOutputs
+  } catch (error) {
+    // Retry logic for transient failures
+    if (retryCount < 2 && (error.message.includes("timed out") || error.message.includes("fetch"))) {
+      console.log(`Retrying Sieve request (attempt ${retryCount + 2}/3)...`)
+      await new Promise(resolve => setTimeout(resolve, 2000)) // Wait 2 seconds before retry
+      return fetchTranscriptFromSieve(videoUrl, sieveApiKey, retryCount + 1)
+    }
+    throw error
+  }
 }

@@ -3,7 +3,7 @@
   "displayName": "Breakdown",
   "version": "0.0.1",
   "description": "Breakdown provides real-time explanations and chat for Youtube videos.",
-  "author": "Paolo Nessim",
+  "author": "Sieve Data",
   "scripts": {
     "dev": "plasmo dev",
     "build": "plasmo build",

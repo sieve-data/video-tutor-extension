@@ -30,6 +30,17 @@ export default function Extension() {
   const [dismissedSetup, setDismissedSetup] = useAtom(dismissedAPIKeySetupAtom)
   const [showAPIKeyModal, setShowAPIKeyModal] = React.useState(false)
   const [showSettingsModal, setShowSettingsModal] = React.useState(false)
+  const [keysLoaded, setKeysLoaded] = React.useState(false)
+  
+  // Wait a bit for atoms to load from storage
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setKeysLoaded(true)
+      console.log("Extension: Keys should be loaded now, sieveAPIKey:", !!sieveAPIKey)
+    }, 500) // Give atoms time to load
+    
+    return () => clearTimeout(timer)
+  }, [])
 
   // Don't reset dismissed state on component mount - keep user's preference
 
@@ -41,14 +52,30 @@ export default function Extension() {
 
     const fetchVideoData = async () => {
       const id = getVideoId()
-      if (id && id !== extensionVideoId && openAIKey && sieveAPIKey) {
+      // Only fetch after keys have had time to load
+      if (!keysLoaded) {
+        console.log("Waiting for keys to load from storage...")
+        return
+      }
+      
+      // Only require sieveAPIKey for transcript fetching
+      if (id && id !== extensionVideoId && sieveAPIKey) {
+        console.log("Starting to fetch video data for ID:", id)
         setExtensionVideoId(id)
         setExtensionLoading(true)
-        const data = await getVideoData(id)
-        console.log("Data")
-        console.log(data)
-        setExtensionData(data)
-        setExtensionLoading(false)
+        try {
+          const data = await getVideoData(id)
+          console.log("Received video data:", data)
+          console.log("Transcript exists:", !!data?.transcript)
+          console.log("Transcript source:", data?.transcriptSource)
+          setExtensionData(data)
+          setExtensionLoading(false)
+        } catch (error) {
+          console.error("Error fetching video data:", error)
+          setExtensionLoading(false)
+        }
+      } else if (id && !sieveAPIKey && keysLoaded) {
+        console.log("Sieve API key not set, cannot fetch transcripts")
       }
     }
 
@@ -57,7 +84,7 @@ export default function Extension() {
     const intervalId = setInterval(fetchVideoData, 2000)
 
     return () => clearInterval(intervalId)
-  }, [extensionVideoId, openAIKey, sieveAPIKey])
+  }, [extensionVideoId, sieveAPIKey, keysLoaded])
 
   React.useEffect(() => {
     console.log("Use Effect That Fetches Theme Called")
@@ -104,6 +131,8 @@ export default function Extension() {
   const handleAPIKeyModalClose = (open: boolean) => {
     setShowAPIKeyModal(open)
     if (!open) {
+      // Mark as shown for this session
+      sessionStorage.setItem('hasShownAPIKeyModal', 'true')
       // Resume video if modal is closed with keys set
       if (openAIKey && sieveAPIKey) {
         const video = document.querySelector('video')
@@ -118,9 +147,23 @@ export default function Extension() {
     setShowSettingsModal(true)
   }
 
-  // Don't render extension if user dismissed setup
-  if (dismissedSetup && (!openAIKey || !sieveAPIKey)) {
-    return null
+  // Don't render extension if API keys are missing
+  if (!openAIKey || !sieveAPIKey) {
+    // Show the modal if not dismissed
+    if (!dismissedSetup && !showAPIKeyModal) {
+      setShowAPIKeyModal(true)
+    }
+    // Don't render the extension without keys
+    return (
+      <>
+        <APIKeyModal
+          open={showAPIKeyModal}
+          onOpenChange={handleAPIKeyModalClose}
+          onLater={handleAPIKeyModalLater}
+          theme={extensionTheme}
+        />
+      </>
+    )
   }
 
   if (!extensionTheme) return null

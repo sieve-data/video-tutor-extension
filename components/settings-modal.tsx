@@ -78,7 +78,12 @@ export default function SettingsModal({ open, onOpenChange, theme }: SettingsMod
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="openai-key-settings">OpenAI API Key</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="openai-key-settings">OpenAI API Key</Label>
+                {openAIKey && (
+                  <span className="text-xs text-green-600 dark:text-green-400">✓ Set</span>
+                )}
+              </div>
               <Input
                 id="openai-key-settings"
                 type={showKeys ? "text" : "password"}
@@ -92,7 +97,12 @@ export default function SettingsModal({ open, onOpenChange, theme }: SettingsMod
               </p>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="sieve-key-settings">Sieve API Key</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="sieve-key-settings">Sieve API Key</Label>
+                {sieveAPIKey && (
+                  <span className="text-xs text-green-600 dark:text-green-400">✓ Set</span>
+                )}
+              </div>
               <Input
                 id="sieve-key-settings"
                 type={showKeys ? "text" : "password"}

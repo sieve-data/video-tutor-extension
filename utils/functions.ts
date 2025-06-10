@@ -1,5 +1,4 @@
 import { fetchTranscriptFromSieve } from "./sieve-api"
-import { fetchYouTubeTranscript } from "./youtube-transcript"
 import { storage } from "@/lib/atoms/storage"
 
 export async function getVideoData(id: string) {
@@ -23,17 +22,16 @@ export async function getVideoData(id: string) {
     console.log("Fetching transcript from Sieve...")
     const sieveData = await fetchTranscriptFromSieve(videoUrl, sieveApiKey)
     
-    // Extract metadata
+    // Get basic metadata from the page since we're not fetching it from Sieve
     const metadata = {
-      title: sieveData.metadata?.title || "Unknown Title",
-      duration: sieveData.metadata?.duration || "0",
-      author: sieveData.metadata?.channel_id || "Unknown Author",
-      views: sieveData.metadata?.view_count || "0"
+      title: document.querySelector('h1.ytd-video-primary-info-renderer')?.textContent || "Video Title",
+      duration: "0",
+      author: document.querySelector('ytd-channel-name a')?.textContent || "Channel",
+      views: document.querySelector('span.view-count')?.textContent || "0 views"
     }
     
-    // Get the transcript - prefer English
-    const subtitles = sieveData.subtitles || {}
-    const transcript = subtitles.en || subtitles.eng || Object.values(subtitles)[0]
+    // Get the transcript
+    const transcript = sieveData.subtitles?.en
     
     if (!transcript) {
       throw new Error("No captions available for this video. Try a different video with captions enabled.")
@@ -51,68 +49,60 @@ export async function getVideoData(id: string) {
   } catch (sieveError) {
     console.error("Failed to fetch from Sieve:", sieveError)
     
-    // Try YouTube fallback
-    try {
-      console.log("Attempting YouTube transcript fallback...")
-      const transcript = await fetchYouTubeTranscript(id)
-      
-      // Resume video if it was playing
-      if (video && wasPlaying) {
-        video.play()
-      }
-      
-      return {
-        metadata: {
-          title: "Transcript loaded (fallback)",
-          duration: "0",
-          author: "Using YouTube's native captions",
-          views: "0"
-        },
-        transcript: transcript,
-        transcriptSource: 'youtube-fallback'
-      }
-      
-    } catch (fallbackError) {
-      console.error("YouTube fallback also failed:", fallbackError)
-      
-      // Resume video on error
-      if (video && wasPlaying) {
-        video.play()
-      }
-      
-      // Return empty data with user-friendly error message
-      let userMessage = "Unable to load captions"
-      if (sieveError.message.includes("No captions available")) {
-        userMessage = "No captions available"
-      } else if (sieveError.message.includes("timed out")) {
-        userMessage = "Loading timed out - please try again"
-      } else if (sieveError.message.includes("API key")) {
-        userMessage = "API key issue - check settings"
-      }
-      
-      return {
-        metadata: {
-          title: userMessage,
-          duration: "0",
-          author: "This video may not have captions or there was a loading error",
-          views: "0"
-        },
-        transcript: null,
-        transcriptSource: 'error'
-      }
+    // Resume video on error
+    if (video && wasPlaying) {
+      video.play()
+    }
+    
+    // Return empty data with user-friendly error message
+    let userMessage = "Unable to load captions"
+    if (sieveError.message.includes("No captions available") || sieveError.message.includes("No English subtitles")) {
+      userMessage = "No captions available"
+    } else if (sieveError.message.includes("timed out")) {
+      userMessage = "Loading timed out - please try again"
+    } else if (sieveError.message.includes("API key")) {
+      userMessage = "API key issue - check settings"
+    }
+    
+    return {
+      metadata: {
+        title: userMessage,
+        duration: "0",
+        author: "This video may not have captions or there was a loading error",
+        views: "0"
+      },
+      transcript: null,
+      transcriptSource: 'error'
     }
   }
 }
 
 export function cleanJsonTranscript(transcript) {
+  console.log("cleanJsonTranscript called with:", transcript)
+  
+  if (!transcript) {
+    console.error("No transcript provided to cleanJsonTranscript")
+    return []
+  }
+  
+  if (!transcript.events) {
+    console.error("Transcript does not have events property. Keys:", Object.keys(transcript))
+    return []
+  }
+  
+  if (transcript.events.length === 0) {
+    console.error("Transcript has empty events array")
+    return []
+  }
+  
   const chunks = []
   let currentChunk = ""
-  let currentStartTime = transcript.events[0].tStartMs
+  let currentStartTime = transcript.events[0].tStartMs || 0
   let currentEndTime = currentStartTime
 
   transcript.events.forEach((event) => {
     event.segs?.forEach((seg) => {
-      const segmentText = seg.utf8.replace(/\n/g, " ")
+      const segmentText = seg.utf8?.replace(/\n/g, " ") || ""
       currentEndTime = event.tStartMs + (seg.tOffsetMs || 0)
       if ((currentChunk + segmentText).length > 300) {
         chunks.push({
@@ -136,6 +126,7 @@ export function cleanJsonTranscript(transcript) {
     })
   }
 
+  console.log(`cleanJsonTranscript processed ${chunks.length} chunks`)
   return chunks
 }
 

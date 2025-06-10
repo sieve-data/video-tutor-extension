@@ -26,7 +26,9 @@ async function waitForJobCompletion(jobId: string, apiKey: string): Promise<any>
     const job: SieveJobResponse = await response.json()
 
     if (job.status === "finished") {
-      return job.outputs
+      // Return the entire job object to see its structure
+      console.log("Job completed:", JSON.stringify(job, null, 2))
+      return job.outputs || job
     } else if (job.status === "error" || job.status === "cancelled") {
       throw new Error(`Job failed with status: ${job.status}`)
     }
@@ -57,10 +59,9 @@ export async function fetchTranscriptFromSieve(videoUrl: string, sieveApiKey: st
       inputs: {
         url: videoUrl,
         download_type: "subtitles",
-        include_metadata: true,
-        metadata_fields: ["title", "description", "duration", "channel_id", "upload_date", "view_count"],
+        include_metadata: false,  // We don't need metadata
         include_subtitles: true,
-        subtitle_languages: ["en", "es", "fr", "de", "ja", "ko", "zh"], // Common languages
+        subtitle_languages: ["en"],  // Only request English
         subtitle_format: "json3" // json3 format includes word-level timestamps
       }
     })
@@ -77,34 +78,59 @@ export async function fetchTranscriptFromSieve(videoUrl: string, sieveApiKey: st
   console.log("Sieve job created:", jobId)
 
   // Wait for job completion
-  const outputs = await waitForJobCompletion(jobId, sieveApiKey)
+  const jobResult = await waitForJobCompletion(jobId, sieveApiKey)
 
-  // Process the outputs
-  const processedOutputs = { ...outputs.output || outputs }
+  console.log("Job result type:", typeof jobResult)
+  console.log("Job result:", JSON.stringify(jobResult, null, 2))
+
+  // Handle the array response structure
+  let subtitlesData = jobResult;
   
-  if (processedOutputs.subtitles) {
-    const parsedSubtitles = {}
-    for (const [lang, fileInfo] of Object.entries(processedOutputs.subtitles)) {
-      try {
-        // Fetch the subtitle file content
-        const subtitleResponse = await fetch(fileInfo.url)
-        const subtitleContent = await subtitleResponse.text()
-        
-        // Parse JSON3 format
-        try {
-          parsedSubtitles[lang] = JSON.parse(subtitleContent)
-        } catch {
-          // If not JSON, keep as text (VTT format)
-          parsedSubtitles[lang] = subtitleContent
-        }
-      } catch (error) {
-        console.error(`Failed to fetch subtitle for language ${lang}:`, error)
-      }
+  // If it's an array, get the first item's data
+  if (Array.isArray(jobResult) && jobResult.length > 0) {
+    const firstResult = jobResult[0];
+    if (firstResult.type === "dict" && firstResult.data) {
+      subtitlesData = firstResult.data;
     }
-    processedOutputs.subtitles = parsedSubtitles
   }
-
-  return processedOutputs
+  
+  // Now check for English subtitles
+  if (subtitlesData && subtitlesData.en && subtitlesData.en.url) {
+    try {
+      const subtitleUrl = subtitlesData.en.url;
+      console.log("Fetching subtitle from URL:", subtitleUrl)
+      
+      // Fetch the subtitle file content
+      const subtitleResponse = await fetch(subtitleUrl)
+      if (!subtitleResponse.ok) {
+        throw new Error(`Failed to fetch subtitle: ${subtitleResponse.statusText}`)
+      }
+      
+      const subtitleContent = await subtitleResponse.text()
+      console.log("Fetched subtitle content length:", subtitleContent.length)
+      
+      // Parse JSON3 format
+      try {
+        const parsedContent = JSON.parse(subtitleContent)
+        console.log("Successfully parsed JSON3 subtitle, events count:", parsedContent.events?.length)
+        return {
+          subtitles: {
+            en: parsedContent
+          }
+        }
+      } catch (parseError) {
+        console.error("Failed to parse as JSON:", parseError)
+        console.log("First 500 chars of content:", subtitleContent.substring(0, 500))
+        throw new Error("Subtitle format not supported - expected JSON3")
+      }
+    } catch (error) {
+      console.error("Failed to fetch/parse subtitle:", error)
+      throw error
+    }
+  } else {
+    console.error("Unexpected response structure:", JSON.stringify(subtitlesData, null, 2))
+    throw new Error("No English subtitles found in the response")
+  }
   } catch (error) {
     // Retry logic for transient failures
     if (retryCount < 2 && (error.message.includes("timed out") || error.message.includes("fetch"))) {

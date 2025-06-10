@@ -14,7 +14,7 @@ interface TranscriptViewerProps {
 export default function TranscriptViewer({ transcript }: TranscriptViewerProps) {
   const [currentTime, setCurrentTime] = useState(0)
   const [segments, setSegments] = useState<TranscriptSegment[]>([])
-  const [isAutoScrolling, setIsAutoScrolling] = useState(true)
+  // Always auto-scroll - no pause
   const containerRef = useRef<HTMLDivElement>(null)
   const segmentRefs = useRef<(HTMLDivElement | null)[]>([])
 
@@ -67,10 +67,8 @@ export default function TranscriptViewer({ transcript }: TranscriptViewerProps) 
     }
   }, [])
 
-  // Auto-scroll to current segment
+  // Auto-scroll to current segment - always keep it centered
   useEffect(() => {
-    if (!isAutoScrolling) return
-
     const currentIndex = segments.findIndex(
       seg => currentTime >= seg.startTime && currentTime <= seg.endTime
     )
@@ -81,15 +79,9 @@ export default function TranscriptViewer({ transcript }: TranscriptViewerProps) 
         block: 'center'
       })
     }
-  }, [currentTime, segments, isAutoScrolling])
+  }, [currentTime, segments])
 
-  // Handle manual scroll
-  const handleScroll = () => {
-    // Temporarily disable auto-scroll when user manually scrolls
-    setIsAutoScrolling(false)
-    // Re-enable after 5 seconds
-    setTimeout(() => setIsAutoScrolling(true), 5000)
-  }
+  // No manual scroll handling needed - always auto-scroll
 
   // Click to jump to time
   const handleSegmentClick = (startTime: number) => {
@@ -125,10 +117,9 @@ export default function TranscriptViewer({ transcript }: TranscriptViewerProps) 
       {/* Main container */}
       <div
         ref={containerRef}
-        onScroll={handleScroll}
         className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700 scrollbar-track-transparent px-6 py-24 scroll-smooth"
       >
-        <div className="max-w-2xl mx-auto space-y-2">
+        <div className="max-w-3xl mx-auto space-y-4">
           {segments.map((segment, index) => {
             const style = getSegmentStyle(segment, index)
             
@@ -138,30 +129,31 @@ export default function TranscriptViewer({ transcript }: TranscriptViewerProps) 
                 ref={el => segmentRefs.current[index] = el}
                 onClick={() => handleSegmentClick(segment.startTime)}
                 className={cn(
-                  "relative px-6 py-3 rounded-xl cursor-pointer transition-all duration-300 group",
+                  "relative px-8 py-5 rounded-xl cursor-pointer transition-all duration-300 group",
                   // Base styles
                   "hover:bg-zinc-50 dark:hover:bg-zinc-900",
                   // Current segment
-                  style.current && "bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-950/30 dark:to-transparent scale-105 shadow-sm",
-                  // Distance-based opacity
-                  style.distance > 5 && "opacity-20",
-                  style.distance > 3 && style.distance <= 5 && "opacity-40",
-                  style.distance > 1 && style.distance <= 3 && "opacity-60",
-                  style.distance <= 1 && !style.current && "opacity-85",
+                  style.current && "bg-gradient-to-r from-blue-50 via-blue-50/50 to-transparent dark:from-blue-950/40 dark:via-blue-950/20 dark:to-transparent scale-110 shadow-lg",
+                  // Distance-based opacity - more aggressive fade
+                  style.distance > 3 && "opacity-0 pointer-events-none",
+                  style.distance === 3 && "opacity-30",
+                  style.distance === 2 && "opacity-60",
+                  style.distance === 1 && "opacity-85",
                   style.current && "opacity-100"
                 )}
               >
                 {/* Time indicator for current segment */}
                 {style.current && (
-                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-400 to-blue-600 rounded-full animate-pulse" />
+                  <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-blue-400 to-blue-600 rounded-full animate-pulse" />
                 )}
                 
                 <p className={cn(
                   "transition-all duration-300 leading-relaxed",
                   // Text size based on position
-                  style.current && "text-lg font-medium text-zinc-900 dark:text-zinc-50",
-                  !style.current && style.distance <= 1 && "text-base text-zinc-700 dark:text-zinc-300",
-                  !style.current && style.distance > 1 && "text-sm text-zinc-600 dark:text-zinc-400",
+                  style.current && "text-2xl font-semibold text-zinc-900 dark:text-zinc-50",
+                  !style.current && style.distance === 1 && "text-xl text-zinc-700 dark:text-zinc-300",
+                  !style.current && style.distance === 2 && "text-lg text-zinc-600 dark:text-zinc-400",
+                  !style.current && style.distance > 2 && "text-base text-zinc-500 dark:text-zinc-500",
                   // Past segments
                   style.past && "text-zinc-400 dark:text-zinc-600"
                 )}>
@@ -187,12 +179,6 @@ export default function TranscriptViewer({ transcript }: TranscriptViewerProps) 
       {/* Center line indicator */}
       <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-[2px] bg-gradient-to-r from-transparent via-blue-200 dark:via-blue-900 to-transparent opacity-30 pointer-events-none" />
       
-      {/* Auto-scroll status */}
-      {!isAutoScrolling && (
-        <div className="absolute bottom-4 right-4 bg-zinc-900/90 dark:bg-zinc-100/90 backdrop-blur-sm text-white dark:text-zinc-900 px-3 py-1.5 rounded-full text-xs font-medium shadow-lg">
-          Auto-scroll paused
-        </div>
-      )}
     </div>
   )
 }

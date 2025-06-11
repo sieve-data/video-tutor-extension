@@ -50,31 +50,32 @@ export default function LearnViewer({ transcript, videoTitle }: LearnViewerProps
   // Update current chunk based on time
   useEffect(() => {
     const current = getCurrentChunk(chunks, currentTime)
-    if (current?.id !== currentChunk?.id) {
-      setCurrentChunk(current)
-      
-      // Update previous and next chunks
-      if (current) {
+    
+    // Always update currentChunk to reflect latest state from chunks array
+    if (current) {
+      const latestChunk = chunks.find(c => c.id === current.id)
+      if (latestChunk) {
+        setCurrentChunk(latestChunk)
+        
+        // Update previous and next chunks
         const currentIndex = chunks.findIndex(c => c.id === current.id)
         setPreviousChunk(currentIndex > 0 ? chunks[currentIndex - 1] : null)
         setNextChunk(currentIndex < chunks.length - 1 ? chunks[currentIndex + 1] : null)
         
-        // Scroll to top when chunk changes
-        if (contentRef.current) {
+        // Scroll to top only when chunk ID changes
+        if (current.id !== currentChunk?.id && contentRef.current) {
           contentRef.current.scrollTop = 0
         }
       }
     }
-  }, [currentTime, chunks, currentChunk])
+  }, [currentTime, chunks, currentChunk?.id])
 
   // Generate explanation for current chunk
   useEffect(() => {
     if (!currentChunk) return
 
-    // Find the chunk in our chunks array to check if it has explanation
-    const chunkData = chunks.find(c => c.id === currentChunk.id)
-    
-    if (chunkData?.explanation || generatingExplanations.has(currentChunk.id)) {
+    // Check if explanation already exists or is being generated
+    if (currentChunk.explanation || generatingExplanations.has(currentChunk.id)) {
       return
     }
 
@@ -111,7 +112,7 @@ export default function LearnViewer({ transcript, videoTitle }: LearnViewerProps
     }
 
     generateExplanation()
-  }, [currentChunk?.id, chunks])
+  }, [currentChunk, chunks, videoTitle, previousChunk?.text])
 
   // Pre-generate explanation for next chunk
   useEffect(() => {

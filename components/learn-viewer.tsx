@@ -169,10 +169,10 @@ export default function LearnViewer({ transcript, videoTitle }: LearnViewerProps
 
   return (
     <div className="h-[500px] overflow-hidden bg-white dark:bg-[#0f0f0f]">
-      <div ref={contentRef} className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700 p-6">
-        <div className="max-w-3xl mx-auto space-y-6">
+      <div ref={contentRef} className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700">
+        <div className="max-w-3xl mx-auto">
           {/* Current Chunk Header */}
-          <div className="sticky top-0 z-10 bg-white dark:bg-[#0f0f0f] pb-4 border-b border-zinc-200 dark:border-zinc-800">
+          <div className="sticky top-0 z-10 bg-white dark:bg-[#0f0f0f] px-6 pt-6 pb-4 border-b border-zinc-200 dark:border-zinc-800">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                 Learning Assistant
@@ -184,7 +184,7 @@ export default function LearnViewer({ transcript, videoTitle }: LearnViewerProps
           </div>
 
           {/* Explanation Content */}
-          <div className="space-y-6">
+          <div className="px-6 pb-6 space-y-6">
             {isGenerating ? (
               <div className="space-y-4">
                 <div className="flex items-center space-x-3">

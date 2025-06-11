@@ -21,18 +21,26 @@ export async function generateExplanation(request: ExplanationRequest): Promise<
 
 RULES:
 - Maximum 3-4 bullet points
+- Each bullet must be on a single line (no line breaks within bullets)
 - Each bullet: 1-2 sentences MAX
 - Start with the insight, not meta-commentary
-- Use **bold** for key concepts
+- Use **bold** for key concepts inline
 - Focus on the "aha!" moments
 - Make it scannable and memorable
 - NO phrases like "In this segment" or "The speaker discusses"
 - Get straight to the point
 
+FORMATTING:
+- Use standard markdown bullet points (-)
+- Keep each bullet point on ONE line
+- Separate bullet points with a blank line
+
 Example format:
-• **Key Concept**: Quick insight or principle
-• **Why it matters**: Real-world impact
-• **Remember this**: Memorable takeaway`
+- **Private Credit**: Emerging industry creating billionaires
+
+- **Competition**: Wall Street vying for a piece of the lucrative market
+
+- **Media Influence**: Bloomberg as a source for industry trends and insights`
 
     const userPrompt = `Video: "${request.videoTitle || 'Educational Video'}"
 

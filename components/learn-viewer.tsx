@@ -12,7 +12,9 @@ interface LearnViewerProps {
 export default function LearnViewer({ transcript, videoTitle }: LearnViewerProps) {
   const [chunks, setChunks] = useState<LearnChunk[]>([])
   const [currentTime, setCurrentTime] = useState(0)
-  const [currentChunk, setCurrentChunk] = useState<LearnChunk | null>(null)
+  const [viewingChunkId, setViewingChunkId] = useState<string | null>(null) // Track which chunk user is viewing
+  const [currentVideoChunk, setCurrentVideoChunk] = useState<LearnChunk | null>(null) // Track video's current chunk
+  const [viewingChunk, setViewingChunk] = useState<LearnChunk | null>(null) // The chunk being displayed
   const [previousChunk, setPreviousChunk] = useState<LearnChunk | null>(null)
   const [nextChunk, setNextChunk] = useState<LearnChunk | null>(null)
   const [generatingExplanations, setGeneratingExplanations] = useState<Set<string>>(new Set())
@@ -47,126 +49,136 @@ export default function LearnViewer({ transcript, videoTitle }: LearnViewerProps
     }
   }, [])
 
-  // Update current chunk based on time
+  // Update video's current chunk based on time
   useEffect(() => {
     const current = getCurrentChunk(chunks, currentTime)
+    setCurrentVideoChunk(current)
     
-    // Always update currentChunk to reflect latest state from chunks array
-    if (current) {
-      const latestChunk = chunks.find(c => c.id === current.id)
-      if (latestChunk) {
-        setCurrentChunk(latestChunk)
-        
-        // Update previous and next chunks
-        const currentIndex = chunks.findIndex(c => c.id === current.id)
-        setPreviousChunk(currentIndex > 0 ? chunks[currentIndex - 1] : null)
-        setNextChunk(currentIndex < chunks.length - 1 ? chunks[currentIndex + 1] : null)
-        
-        // Scroll to top only when chunk ID changes
-        if (current.id !== currentChunk?.id && contentRef.current) {
-          contentRef.current.scrollTop = 0
-        }
+    // If user hasn't manually navigated, follow the video
+    if (!viewingChunkId && current) {
+      setViewingChunkId(current.id)
+    }
+  }, [currentTime, chunks, viewingChunkId])
+
+  // Update viewing chunk when viewingChunkId changes
+  useEffect(() => {
+    if (!viewingChunkId || chunks.length === 0) return
+    
+    const chunk = chunks.find(c => c.id === viewingChunkId)
+    if (chunk) {
+      setViewingChunk(chunk)
+      
+      // Update previous and next chunks
+      const currentIndex = chunks.findIndex(c => c.id === viewingChunkId)
+      setPreviousChunk(currentIndex > 0 ? chunks[currentIndex - 1] : null)
+      setNextChunk(currentIndex < chunks.length - 1 ? chunks[currentIndex + 1] : null)
+      
+      // Scroll to top when chunk changes
+      if (contentRef.current) {
+        contentRef.current.scrollTop = 0
       }
     }
-  }, [currentTime, chunks, currentChunk?.id])
+  }, [viewingChunkId, chunks])
 
-  // Generate explanation for current chunk
+  // Generate explanation for viewing chunk
   useEffect(() => {
-    if (!currentChunk) return
+    if (!viewingChunk) return
 
     // Check if explanation already exists or is being generated
-    if (currentChunk.explanation || generatingExplanations.has(currentChunk.id)) {
+    if (viewingChunk.explanation || generatingExplanations.has(viewingChunk.id)) {
       return
     }
 
     const generateExplanation = async () => {
-      setGeneratingExplanations(prev => new Set(prev).add(currentChunk.id))
+      setGeneratingExplanations(prev => new Set(prev).add(viewingChunk.id))
       
       try {
-        const explanation = await getCachedExplanation(currentChunk.id, {
-          chunkText: currentChunk.text,
+        const viewingIndex = chunks.findIndex(c => c.id === viewingChunk.id)
+        const prevChunk = viewingIndex > 0 ? chunks[viewingIndex - 1] : null
+        
+        const explanation = await getCachedExplanation(viewingChunk.id, {
+          chunkText: viewingChunk.text,
           videoTitle: videoTitle,
-          previousContext: previousChunk?.text
+          previousContext: prevChunk?.text
         })
         
         // Update chunk with explanation
         setChunks(prev => prev.map(chunk => 
-          chunk.id === currentChunk.id 
+          chunk.id === viewingChunk.id 
             ? { ...chunk, explanation } 
             : chunk
         ))
       } catch (error) {
         console.error('Failed to generate explanation:', error)
         setChunks(prev => prev.map(chunk => 
-          chunk.id === currentChunk.id 
+          chunk.id === viewingChunk.id 
             ? { ...chunk, error: 'Failed to generate explanation' } 
             : chunk
         ))
       } finally {
         setGeneratingExplanations(prev => {
           const newSet = new Set(prev)
-          newSet.delete(currentChunk.id)
+          newSet.delete(viewingChunk.id)
           return newSet
         })
       }
     }
 
     generateExplanation()
-  }, [currentChunk, chunks, videoTitle, previousChunk?.text])
+  }, [viewingChunk, chunks, videoTitle])
 
-  // Pre-generate explanation for next chunk
+  // Pre-generate explanations for upcoming chunks
   useEffect(() => {
-    if (!nextChunk || nextChunk.explanation || generatingExplanations.has(nextChunk.id)) {
-      return
-    }
+    if (!viewingChunk || chunks.length === 0) return
 
-    const preGenerateExplanation = async () => {
-      setGeneratingExplanations(prev => new Set(prev).add(nextChunk.id))
-      
-      try {
-        const explanation = await getCachedExplanation(nextChunk.id, {
-          chunkText: nextChunk.text,
-          videoTitle: videoTitle,
-          previousContext: currentChunk?.text
-        })
-        
-        setChunks(prev => prev.map(chunk => 
-          chunk.id === nextChunk.id 
-            ? { ...chunk, explanation } 
-            : chunk
-        ))
-      } catch (error) {
-        console.error('Failed to pre-generate explanation:', error)
-      } finally {
-        setGeneratingExplanations(prev => {
-          const newSet = new Set(prev)
-          newSet.delete(nextChunk.id)
-          return newSet
-        })
+    const currentIndex = chunks.findIndex(c => c.id === viewingChunk.id)
+    const upcomingChunks = chunks.slice(currentIndex + 1, currentIndex + 4) // Pre-generate next 3 chunks
+
+    upcomingChunks.forEach((chunk, index) => {
+      if (chunk.explanation || generatingExplanations.has(chunk.id)) {
+        return
       }
-    }
 
-    // Delay pre-generation slightly
-    const timer = setTimeout(preGenerateExplanation, 2000)
-    return () => clearTimeout(timer)
-  }, [nextChunk, currentChunk, videoTitle, generatingExplanations])
+      const delay = (index + 1) * 1000 // Stagger requests
+
+      const timer = setTimeout(async () => {
+        setGeneratingExplanations(prev => new Set(prev).add(chunk.id))
+        
+        try {
+          const chunkIndex = chunks.findIndex(c => c.id === chunk.id)
+          const prevChunk = chunkIndex > 0 ? chunks[chunkIndex - 1] : null
+          
+          const explanation = await getCachedExplanation(chunk.id, {
+            chunkText: chunk.text,
+            videoTitle: videoTitle,
+            previousContext: prevChunk?.text
+          })
+          
+          setChunks(prev => prev.map(c => 
+            c.id === chunk.id 
+              ? { ...c, explanation } 
+              : c
+          ))
+        } catch (error) {
+          console.error('Failed to pre-generate explanation:', error)
+        } finally {
+          setGeneratingExplanations(prev => {
+            const newSet = new Set(prev)
+            newSet.delete(chunk.id)
+            return newSet
+          })
+        }
+      }, delay)
+
+      return () => clearTimeout(timer)
+    })
+  }, [viewingChunk, chunks, videoTitle, generatingExplanations])
 
   const navigateToChunk = (chunkId: string) => {
-    const chunk = chunks.find(c => c.id === chunkId)
-    if (chunk) {
-      setCurrentChunk(chunk)
-      const chunkIndex = chunks.findIndex(c => c.id === chunkId)
-      setPreviousChunk(chunkIndex > 0 ? chunks[chunkIndex - 1] : null)
-      setNextChunk(chunkIndex < chunks.length - 1 ? chunks[chunkIndex + 1] : null)
-      
-      // Scroll to top when manually navigating
-      if (contentRef.current) {
-        contentRef.current.scrollTop = 0
-      }
-    }
+    setViewingChunkId(chunkId)
   }
 
-  if (!currentChunk) {
+  if (!viewingChunk) {
     return (
       <div className="h-full flex items-center justify-center">
         <p className="text-zinc-500 dark:text-zinc-400">Loading video content...</p>
@@ -174,7 +186,8 @@ export default function LearnViewer({ transcript, videoTitle }: LearnViewerProps
     )
   }
 
-  const isGenerating = generatingExplanations.has(currentChunk.id)
+  const isGenerating = generatingExplanations.has(viewingChunk.id)
+  const isCurrentVideoChunk = currentVideoChunk?.id === viewingChunk.id
 
   return (
     <div className="h-[500px] overflow-hidden bg-white dark:bg-[#0f0f0f]">
@@ -187,7 +200,12 @@ export default function LearnViewer({ transcript, videoTitle }: LearnViewerProps
                 Learning Assistant
               </h3>
               <span className="text-sm text-zinc-500 dark:text-zinc-400">
-                {formatChunkTime(currentChunk)}
+                {formatChunkTime(viewingChunk)}
+                {!isCurrentVideoChunk && (
+                  <span className="ml-2 text-xs text-orange-500">
+                    (Not current)
+                  </span>
+                )}
               </span>
             </div>
           </div>
@@ -206,21 +224,25 @@ export default function LearnViewer({ transcript, videoTitle }: LearnViewerProps
                   <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-5/6"></div>
                 </div>
               </div>
-            ) : currentChunk.error ? (
+            ) : viewingChunk.error ? (
               <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg">
-                <p className="text-sm text-red-600 dark:text-red-400">{currentChunk.error}</p>
+                <p className="text-sm text-red-600 dark:text-red-400">{viewingChunk.error}</p>
               </div>
-            ) : currentChunk.explanation ? (
+            ) : viewingChunk.explanation ? (
               <div className="prose prose-xl prose-zinc dark:prose-invert max-w-none">
                 <ReactMarkdown 
                   components={{
-                    ul: ({children}) => <ul className="space-y-3 list-none pl-0">{children}</ul>,
-                    li: ({children}) => <li className="text-xl leading-relaxed">{children}</li>,
-                    p: ({children}) => <p className="text-xl leading-relaxed mb-4">{children}</p>,
+                    ul: ({children}) => <ul className="space-y-6">{children}</ul>,
+                    li: ({children}) => (
+                      <li className="text-lg leading-relaxed list-disc ml-6">
+                        {children}
+                      </li>
+                    ),
+                    p: ({children}) => <p className="text-lg leading-relaxed mb-6">{children}</p>,
                     strong: ({children}) => <strong className="font-bold text-blue-600 dark:text-blue-400">{children}</strong>
                   }}
                 >
-                  {currentChunk.explanation}
+                  {viewingChunk.explanation}
                 </ReactMarkdown>
               </div>
             ) : null}
@@ -231,19 +253,18 @@ export default function LearnViewer({ transcript, videoTitle }: LearnViewerProps
               <div className="flex items-center justify-center">
                 <button
                   onClick={() => {
-                    const videoChunk = getCurrentChunk(chunks, currentTime)
-                    if (videoChunk && videoChunk.id !== currentChunk.id) {
-                      navigateToChunk(videoChunk.id)
+                    if (currentVideoChunk && currentVideoChunk.id !== viewingChunk.id) {
+                      navigateToChunk(currentVideoChunk.id)
                     }
                   }}
                   className={cn(
                     "px-4 py-2 text-sm font-medium rounded-full transition-all",
-                    getCurrentChunk(chunks, currentTime)?.id === currentChunk.id
+                    isCurrentVideoChunk
                       ? "bg-blue-500 text-white cursor-default"
-                      : "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50"
+                      : "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 hover:bg-orange-200 dark:hover:bg-orange-900/50 animate-pulse"
                   )}
                 >
-                  {getCurrentChunk(chunks, currentTime)?.id === currentChunk.id ? "Current Segment" : "Go to Current"}
+                  {isCurrentVideoChunk ? "Current Segment" : "Jump to Current Video Segment"}
                 </button>
               </div>
               
@@ -263,7 +284,10 @@ export default function LearnViewer({ transcript, videoTitle }: LearnViewerProps
                 </button>
                 
                 <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                  {chunks.findIndex(c => c.id === currentChunk.id) + 1} / {chunks.length}
+                  Viewing: {chunks.findIndex(c => c.id === viewingChunk.id) + 1} / {chunks.length}
+                  {currentVideoChunk && !isCurrentVideoChunk && (
+                    <span className="block">Video at: {chunks.findIndex(c => c.id === currentVideoChunk.id) + 1}</span>
+                  )}
                 </span>
 
                 <button

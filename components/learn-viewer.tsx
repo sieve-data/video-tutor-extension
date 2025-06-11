@@ -151,10 +151,18 @@ export default function LearnViewer({ transcript, videoTitle }: LearnViewerProps
     return () => clearTimeout(timer)
   }, [nextChunk, currentChunk, videoTitle, generatingExplanations])
 
-  const jumpToChunk = (chunk: LearnChunk) => {
-    const video = document.querySelector('video')
-    if (video) {
-      video.currentTime = chunk.startTime / 1000
+  const navigateToChunk = (chunkId: string) => {
+    const chunk = chunks.find(c => c.id === chunkId)
+    if (chunk) {
+      setCurrentChunk(chunk)
+      const chunkIndex = chunks.findIndex(c => c.id === chunkId)
+      setPreviousChunk(chunkIndex > 0 ? chunks[chunkIndex - 1] : null)
+      setNextChunk(chunkIndex < chunks.length - 1 ? chunks[chunkIndex + 1] : null)
+      
+      // Scroll to top when manually navigating
+      if (contentRef.current) {
+        contentRef.current.scrollTop = 0
+      }
     }
   }
 
@@ -203,42 +211,74 @@ export default function LearnViewer({ transcript, videoTitle }: LearnViewerProps
                 <p className="text-sm text-red-600 dark:text-red-400">{currentChunk.error}</p>
               </div>
             ) : currentChunk.explanation ? (
-              <div className="prose prose-lg prose-zinc dark:prose-invert max-w-none text-lg leading-relaxed">
-                <ReactMarkdown>{currentChunk.explanation}</ReactMarkdown>
+              <div className="prose prose-xl prose-zinc dark:prose-invert max-w-none">
+                <ReactMarkdown 
+                  components={{
+                    ul: ({children}) => <ul className="space-y-3 list-none pl-0">{children}</ul>,
+                    li: ({children}) => <li className="text-xl leading-relaxed">{children}</li>,
+                    p: ({children}) => <p className="text-xl leading-relaxed mb-4">{children}</p>,
+                    strong: ({children}) => <strong className="font-bold text-blue-600 dark:text-blue-400">{children}</strong>
+                  }}
+                >
+                  {currentChunk.explanation}
+                </ReactMarkdown>
               </div>
             ) : null}
 
             {/* Navigation */}
-            <div className="flex items-center justify-between pt-4">
-              <button
-                onClick={() => previousChunk && jumpToChunk(previousChunk)}
-                disabled={!previousChunk}
-                className={cn(
-                  "px-4 py-2 text-sm font-medium rounded-lg transition-colors",
-                  previousChunk
-                    ? "bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300"
-                    : "bg-zinc-50 dark:bg-zinc-900 text-zinc-400 dark:text-zinc-600 cursor-not-allowed"
-                )}
-              >
-                ← Previous
-              </button>
+            <div className="flex flex-col gap-4 pt-4">
+              {/* Current Video Time Indicator */}
+              <div className="flex items-center justify-center">
+                <button
+                  onClick={() => {
+                    const videoChunk = getCurrentChunk(chunks, currentTime)
+                    if (videoChunk && videoChunk.id !== currentChunk.id) {
+                      navigateToChunk(videoChunk.id)
+                    }
+                  }}
+                  className={cn(
+                    "px-4 py-2 text-sm font-medium rounded-full transition-all",
+                    getCurrentChunk(chunks, currentTime)?.id === currentChunk.id
+                      ? "bg-blue-500 text-white cursor-default"
+                      : "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50"
+                  )}
+                >
+                  {getCurrentChunk(chunks, currentTime)?.id === currentChunk.id ? "Current Segment" : "Go to Current"}
+                </button>
+              </div>
               
-              <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                {chunks.findIndex(c => c.id === currentChunk.id) + 1} / {chunks.length}
-              </span>
+              {/* Navigation Buttons */}
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => previousChunk && navigateToChunk(previousChunk.id)}
+                  disabled={!previousChunk}
+                  className={cn(
+                    "px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+                    previousChunk
+                      ? "bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300"
+                      : "bg-zinc-50 dark:bg-zinc-900 text-zinc-400 dark:text-zinc-600 cursor-not-allowed"
+                  )}
+                >
+                  ← Previous
+                </button>
+                
+                <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                  {chunks.findIndex(c => c.id === currentChunk.id) + 1} / {chunks.length}
+                </span>
 
-              <button
-                onClick={() => nextChunk && jumpToChunk(nextChunk)}
-                disabled={!nextChunk}
-                className={cn(
-                  "px-4 py-2 text-sm font-medium rounded-lg transition-colors",
-                  nextChunk
-                    ? "bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300"
-                    : "bg-zinc-50 dark:bg-zinc-900 text-zinc-400 dark:text-zinc-600 cursor-not-allowed"
-                )}
-              >
-                Next →
-              </button>
+                <button
+                  onClick={() => nextChunk && navigateToChunk(nextChunk.id)}
+                  disabled={!nextChunk}
+                  className={cn(
+                    "px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+                    nextChunk
+                      ? "bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300"
+                      : "bg-zinc-50 dark:bg-zinc-900 text-zinc-400 dark:text-zinc-600 cursor-not-allowed"
+                  )}
+                >
+                  Next →
+                </button>
+              </div>
             </div>
           </div>
         </div>

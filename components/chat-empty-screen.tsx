@@ -10,20 +10,20 @@ import { usePort } from "@plasmohq/messaging/hook";
 
 const exampleMessages = [
   {
-    heading: "What is the video about?",
-    message: "Can you tell me about the video?",
+    heading: "Explain the main concept",
+    message: "Can you explain the main concept discussed in this video in simple terms?",
   },
   {
-    heading: "What are the key points?",
-    message: "What are the key points of the video?",
+    heading: "Give me an example",
+    message: "Can you provide a real-world example of what's being discussed?",
   },
   {
-    heading: "What are the main takeaways?",
-    message: "What are the main takeaways of the video?",
+    heading: "Why is this important?",
+    message: "Why is this topic important? How does it apply to real life?",
   },
   {
-    heading: "What are the main topics?",
-    message: "What are the main topics discussed in the video?",
+    heading: "Break down the complex parts",
+    message: "What are the most complex ideas here and can you break them down?",
   },
 ];
 

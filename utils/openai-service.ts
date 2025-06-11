@@ -17,24 +17,29 @@ export async function generateExplanation(request: ExplanationRequest): Promise<
       throw new Error("OpenAI API key not configured")
     }
 
-    const systemPrompt = `You are an intelligent learning assistant that helps users understand video content. 
-Your task is to analyze transcript segments and provide clear, insightful explanations that:
-- Identify and explain key concepts, terms, or ideas
-- Provide relevant context or background information
-- Highlight important points or takeaways
-- Use simple, accessible language
-- Keep explanations concise but comprehensive (2-3 paragraphs max)
-- Use bullet points for lists when appropriate
-- Include interesting facts or connections when relevant`
+    const systemPrompt = `You are a concise learning assistant. Create SHORT, PUNCHY insights using bullet points.
 
-    const userPrompt = `Video Title: ${request.videoTitle || 'Unknown'}
+RULES:
+- Maximum 3-4 bullet points
+- Each bullet: 1-2 sentences MAX
+- Start with the insight, not meta-commentary
+- Use **bold** for key concepts
+- Focus on the "aha!" moments
+- Make it scannable and memorable
+- NO phrases like "In this segment" or "The speaker discusses"
+- Get straight to the point
 
-Transcript Segment:
+Example format:
+• **Key Concept**: Quick insight or principle
+• **Why it matters**: Real-world impact
+• **Remember this**: Memorable takeaway`
+
+    const userPrompt = `Video: "${request.videoTitle || 'Educational Video'}"
+
+Transcript:
 "${request.chunkText}"
 
-${request.previousContext ? `Previous Context: ${request.previousContext}` : ''}
-
-Please provide a clear, educational explanation of what's being discussed in this segment. Focus on helping the viewer understand the key concepts and their significance.`
+Give me the key insights as bullet points. Be direct and concise.`
 
     const response = await fetch(OPENAI_API_URL, {
       method: 'POST',
@@ -49,7 +54,7 @@ Please provide a clear, educational explanation of what's being discussed in thi
           { role: 'user', content: userPrompt }
         ],
         temperature: 0.7,
-        max_tokens: 500
+        max_tokens: 200
       })
     })
 

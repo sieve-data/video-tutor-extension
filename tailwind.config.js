@@ -7,7 +7,9 @@ module.exports = {
     "./components/**/*.{ts,tsx}",
     "./app/**/*.{ts,tsx}",
     "./src/**/*.{ts,tsx}",
-    "./**/*.tsx"
+    "./utils/**/*.{ts,tsx}",
+    "./contexts/**/*.{ts,tsx}",
+    "./lib/**/*.{ts,tsx}"
   ],
   prefix: "",
   theme: {

@@ -5,7 +5,7 @@ interface MarkdownProps {
   className?: string
 }
 
-export default function Markdown({ markdown, className }: MarkdownProps) {
+export default function Markdown({ markdown = "", className }: MarkdownProps) {
   // prettier-ignore
   const convertToHtml = (markdownText: string) => {
     // Convert headers with Tailwind classes

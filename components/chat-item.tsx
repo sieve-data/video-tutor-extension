@@ -18,7 +18,7 @@ export default function ChatItem({ message }: ChatItemProps) {
         {message.role === "assistant" && !message.content ? (
           <span>{spinner}</span>
         ) : (
-          <Markdown markdown={message.content} />
+          <Markdown markdown={message.content || ""} />
         )}
       </div>
     </div>

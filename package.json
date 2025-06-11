@@ -102,6 +102,9 @@
       "lmdb",
       "msgpackr-extract",
       "sharp"
-    ]
+    ],
+    "overrides": {
+      "vfile": "^5.3.7"
+    }
   }
 }

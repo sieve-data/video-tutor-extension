@@ -11,7 +11,8 @@ import { usePort } from "@plasmohq/messaging/hook";
 const exampleMessages = [
   {
     heading: "Explain the main concept",
-    message: "Can you explain the main concept discussed in this video in simple terms?",
+    message:
+      "Can you explain the main concept discussed in this video in simple terms?",
   },
   {
     heading: "Give me an example",
@@ -23,7 +24,8 @@ const exampleMessages = [
   },
   {
     heading: "Break down the complex parts",
-    message: "What are the most complex ideas here and can you break them down?",
+    message:
+      "What are the most complex ideas here and can you break them down?",
   },
 ];
 
@@ -93,10 +95,10 @@ export default function EmptyScreen({
       <div className="rounded-md bg-background p-8 w-full justify-center flex flex-col items-center">
         <span className="text-2xl flex items-center mb-8">
           <IconSparkles className="inline mr-0 ml-0.5 w-4 sm:w-5 mb-1" />
-          Breakdown
+          VideoTutor
         </span>
         <p className="mb-4 leading-normal text-muted-foreground text-center opacity-70">
-          Breakdown is a tool that provides real-time concept explanations and
+          VideoTutor is a tool that provides real-time concept explanations and
           provides users with a chat interface to ask questions about the
           content.
         </p>

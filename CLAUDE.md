@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Breakdown is a Chrome browser extension that provides real-time concept explanations and AI chat functionality for educational YouTube videos. It injects into YouTube watch pages and offers transcript processing, AI-powered chat, and video summaries.
+VideoTutor is a Chrome browser extension that provides real-time concept explanations and AI chat functionality for educational YouTube videos. It injects into YouTube watch pages and offers transcript processing, AI-powered chat, and video summaries.
 
 ## Development Commands
 
@@ -25,6 +25,7 @@ pnpm package
 ## Architecture Overview
 
 ### Technology Stack
+
 - **Framework**: Plasmo (browser extension framework)
 - **UI**: React 18 with TypeScript
 - **Styling**: Tailwind CSS with custom animations
@@ -35,12 +36,14 @@ pnpm package
 
 1. **Content Script Architecture**: The extension uses Plasmo's content script system to inject into YouTube pages. Main entry point is `src/contents/plasmo-main-ui.tsx` which mounts into YouTube's secondary panel.
 
-2. **State Management Pattern**: 
+2. **State Management Pattern**:
+
    - Redux for global application state with persistence
    - Jotai atoms for component-level state and OpenAI configuration
    - Context providers for feature-specific state (chat, transcript, summary)
 
 3. **Component Organization**:
+
    - `/components/ui/` - Reusable UI primitives (shadcn/ui based)
    - `/components/` - Feature-specific components (chat, transcript, summary)
    - `/contexts/` - React contexts for feature state management

@@ -1,8 +1,8 @@
 {
-  "name": "breakdown",
-  "displayName": "Breakdown",
+  "name": "video-tutor",
+  "displayName": "VideoTutor",
   "version": "0.0.1",
-  "description": "Breakdown provides real-time explanations and chat for Youtube videos.",
+  "description": "VideoTutor provides real-time explanations and chat for Youtube videos.",
   "author": "Sieve Data",
   "scripts": {
     "dev": "plasmo dev",

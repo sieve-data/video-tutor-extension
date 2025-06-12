@@ -1,39 +1,50 @@
-import { openAIKeyAtom, sieveAPIKeyAtom } from "@/lib/atoms/openai"
-import { useSetAtom } from "jotai"
-import React from "react"
+import { openAIKeyAtom, sieveAPIKeyAtom } from "@/lib/atoms/openai";
+import { useSetAtom } from "jotai";
+import React from "react";
 
-import { Button } from "./ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog"
-import { Input } from "./ui/input"
-import { Label } from "./ui/label"
+import { Button } from "./ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "./ui/dialog";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
 
 interface APIKeyModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onLater: () => void
-  theme?: string | null
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onLater: () => void;
+  theme?: string | null;
 }
 
-export default function APIKeyModal({ open, onOpenChange, onLater, theme }: APIKeyModalProps) {
-  const setOpenAIKey = useSetAtom(openAIKeyAtom)
-  const setSieveAPIKey = useSetAtom(sieveAPIKeyAtom)
-  const [openAIKeyValue, setOpenAIKeyValue] = React.useState("")
-  const [sieveKeyValue, setSieveKeyValue] = React.useState("")
+export default function APIKeyModal({
+  open,
+  onOpenChange,
+  onLater,
+  theme,
+}: APIKeyModalProps) {
+  const setOpenAIKey = useSetAtom(openAIKeyAtom);
+  const setSieveAPIKey = useSetAtom(sieveAPIKeyAtom);
+  const [openAIKeyValue, setOpenAIKeyValue] = React.useState("");
+  const [sieveKeyValue, setSieveKeyValue] = React.useState("");
 
   const handleSubmit = async () => {
     if (openAIKeyValue && sieveKeyValue) {
-      setOpenAIKey(openAIKeyValue)
-      setSieveAPIKey(sieveKeyValue)
+      setOpenAIKey(openAIKeyValue);
+      setSieveAPIKey(sieveKeyValue);
       // Small delay to ensure storage write completes
-      await new Promise(resolve => setTimeout(resolve, 100))
-      onOpenChange(false)
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      onOpenChange(false);
     }
-  }
+  };
 
   const handleLater = () => {
-    onLater()
-    onOpenChange(false)
-  }
+    onLater();
+    onOpenChange(false);
+  };
 
   return (
     <div className={theme}>
@@ -42,7 +53,9 @@ export default function APIKeyModal({ open, onOpenChange, onLater, theme }: APIK
           <DialogHeader>
             <DialogTitle>Setup API Keys</DialogTitle>
             <DialogDescription>
-              Enter your API keys to start using Breakdown. You can find your OpenAI key at platform.openai.com and your Sieve key at sievedata.com.
+              Enter your API keys to start using VideoTutor. You can find your
+              OpenAI key at platform.openai.com and your Sieve key at
+              sievedata.com.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -71,7 +84,7 @@ export default function APIKeyModal({ open, onOpenChange, onLater, theme }: APIK
             <Button variant="outline" onClick={handleLater}>
               Later
             </Button>
-            <Button 
+            <Button
               onClick={handleSubmit}
               disabled={!openAIKeyValue || !sieveKeyValue}
             >
@@ -81,5 +94,5 @@ export default function APIKeyModal({ open, onOpenChange, onLater, theme }: APIK
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }

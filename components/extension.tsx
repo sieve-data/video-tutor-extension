@@ -32,15 +32,23 @@ export default function Extension() {
   const [showSettingsModal, setShowSettingsModal] = React.useState(false)
   const [keysLoaded, setKeysLoaded] = React.useState(false)
   
-  // Wait a bit for atoms to load from storage
+  // Wait for atoms to actually load from storage
   React.useEffect(() => {
-    const timer = setTimeout(() => {
+    // Check if keys have loaded (they'll be undefined while loading, then either a string or null)
+    if (openAIKey !== undefined && sieveAPIKey !== undefined) {
+      console.log("Extension: Keys actually loaded - openAIKey:", !!openAIKey, "sieveAPIKey:", !!sieveAPIKey)
       setKeysLoaded(true)
-      console.log("Extension: Keys should be loaded now, sieveAPIKey:", !!sieveAPIKey)
-    }, 500) // Give atoms time to load
+      return
+    }
+    
+    // Fallback timeout in case storage is slow
+    const timer = setTimeout(() => {
+      console.log("Extension: Timeout reached - openAIKey:", !!openAIKey, "sieveAPIKey:", !!sieveAPIKey)
+      setKeysLoaded(true)
+    }, 3000) // Give atoms even more time to load
     
     return () => clearTimeout(timer)
-  }, [])
+  }, [openAIKey, sieveAPIKey])
 
   // Don't reset dismissed state on component mount - keep user's preference
 
@@ -102,7 +110,9 @@ export default function Extension() {
 
   // Only show API key modal once per session if keys are missing
   React.useEffect(() => {
-    // Only check on initial mount, not on every render
+    // Don't check until keys have had time to load
+    if (!keysLoaded) return
+    
     const hasShownThisSession = sessionStorage.getItem('hasShownAPIKeyModal')
     
     if (!openAIKey || !sieveAPIKey) {
@@ -116,7 +126,7 @@ export default function Extension() {
         sessionStorage.setItem('hasShownAPIKeyModal', 'true')
       }
     }
-  }, []) // Empty dependency array - only run once on mount
+  }, [keysLoaded, openAIKey, sieveAPIKey]) // Check when keys are actually loaded
 
   const handleAPIKeyModalLater = () => {
     setDismissedSetup(true)
@@ -147,43 +157,72 @@ export default function Extension() {
     setShowSettingsModal(true)
   }
 
-  // Don't render extension if API keys are missing
-  if (!openAIKey || !sieveAPIKey) {
-    // Show the modal if not dismissed
-    if (!dismissedSetup && !showAPIKeyModal) {
-      setShowAPIKeyModal(true)
-    }
-    // Don't render the extension without keys
-    return (
-      <>
-        <APIKeyModal
-          open={showAPIKeyModal}
-          onOpenChange={handleAPIKeyModalClose}
-          onLater={handleAPIKeyModalLater}
-          theme={extensionTheme}
-        />
-      </>
-    )
-  }
+  // Don't wait for theme, use a default
+  const theme = extensionTheme || "light"
 
-  if (!extensionTheme) return null
+  console.log("Extension render:", {
+    keysLoaded,
+    hasOpenAIKey: !!openAIKey,
+    hasSieveAPIKey: !!sieveAPIKey,
+    theme,
+    showAPIKeyModal
+  })
 
-  return (
+  // Always render the modal component so it can be shown when needed
+  const modalComponent = (
     <>
       <APIKeyModal
         open={showAPIKeyModal}
         onOpenChange={handleAPIKeyModalClose}
         onLater={handleAPIKeyModalLater}
-        theme={extensionTheme}
+        theme={theme}
       />
       <SettingsModal
         open={showSettingsModal}
         onOpenChange={setShowSettingsModal}
-        theme={extensionTheme}
+        theme={theme}
       />
+    </>
+  )
+
+  // If keys aren't loaded yet, show a minimal container with the modal
+  if (!keysLoaded) {
+    return (
+      <div className={theme}>
+        {modalComponent}
+      </div>
+    )
+  }
+
+  // If keys are missing after loading, show a setup prompt with the modal
+  if (!openAIKey || !sieveAPIKey) {
+    return (
+      <main className={`antialiased w-full mb-3 z-10 ${theme}`}>
+        {modalComponent}
+        {!showAPIKeyModal && (
+          <div className="w-full p-4 bg-white dark:bg-[#0f0f0f] border border-zinc-200 dark:border-zinc-800 rounded-md">
+            <div className="text-center space-y-3">
+              <p className="text-sm text-gray-600 dark:text-gray-400">Breakdown requires API keys to function</p>
+              <button
+                onClick={() => setShowAPIKeyModal(true)}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded-md transition-colors"
+              >
+                Setup API Keys
+              </button>
+            </div>
+          </div>
+        )}
+      </main>
+    )
+  }
+
+  // Keys exist, show the full extension
+  return (
+    <>
+      {modalComponent}
       <main
         ref={setExtensionContainer}
-        className={`antialiased w-full mb-3 z-10 ${extensionTheme}`}>
+        className={`antialiased w-full mb-3 z-10 ${theme}`}>
         <div className="w-full">
           <Collapsible
             open={extensionIsOpen}

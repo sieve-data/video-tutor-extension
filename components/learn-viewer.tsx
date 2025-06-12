@@ -233,7 +233,7 @@ export default function LearnViewer({
           </div>
 
           {/* Explanation Content */}
-          <div className="px-6 pb-6 space-y-6">
+          <div className="px-6 pt-8 pb-6 space-y-6">
             {isGenerating ? (
               <div className="space-y-4">
                 <div className="flex items-center space-x-3">

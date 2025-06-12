@@ -18,7 +18,7 @@ Since VideoTutor is pending approval on the Chrome Web Store, you can install it
 
 - Node.js (v16 or higher)
 - pnpm package manager
-- Chrome browser
+- Chromium based browser (e.g. Chrome, Arc, Brave, etc...)
 
 ### Setup
 
